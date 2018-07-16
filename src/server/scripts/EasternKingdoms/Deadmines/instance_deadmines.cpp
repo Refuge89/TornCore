@@ -1,93 +1,103 @@
-﻿/*
- * Originally written by Xinef - Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
-*/
-
 #include "ScriptMgr.h"
 #include "InstanceScript.h"
 #include "deadmines.h"
 
 class instance_deadmines : public InstanceMapScript
 {
-    public:
-        instance_deadmines() : InstanceMapScript("instance_deadmines", 36) { }
+public:
+	instance_deadmines() : InstanceMapScript("instance_deadmines", 36) { }
 
-        struct instance_deadmines_InstanceMapScript : public InstanceScript
-        {
-            instance_deadmines_InstanceMapScript(Map* map) : InstanceScript(map)
-            {
-            }
+	struct instance_deadmines_InstanceMapScript : public InstanceScript
+	{
+		instance_deadmines_InstanceMapScript(Map* map) : InstanceScript(map)
+		{
+		}
 
-            void Initialize()
-            {
-                memset(&_encounters, 0, sizeof(_encounters));
-            }
+		void Initialize()
+		{
+			memset(&_encounters, 0, sizeof(_encounters));
+		}
 
-            void OnGameObjectCreate(GameObject* gameobject)
-            {
-                switch (gameobject->GetEntry())
-                {
-                    case GO_FACTORY_DOOR:
-                        if (_encounters[TYPE_RHAHK_ZOR] == DONE)
-                            gameobject->SetGoState(GO_STATE_ACTIVE);
-                        break;
-                    case GO_IRON_CLAD_DOOR:
-                        if (_encounters[TYPE_CANNON] == DONE)
-                            HandleGameObject(0, true, gameobject);
-                        break;
-                }
-            }
+		//Work around to open the door after first boss is killed without writing a custom script for the boss
+		void OnUnitDeath(Unit* unit)
+		{
+			//
+			if (unit->GetEntry() == 644) //RHAHK_ZOR - Entry is NPC ID, NPC GUID, 644, 2171407, respectfully
+			{
+				//Open Door
+				door1->UseDoorOrButton();
+			}
+		}
 
-            void SetData(uint32 type, uint32 data)
-            {
-                switch (type)
-                {
-                    case TYPE_RHAHK_ZOR:
-                    case TYPE_CANNON:
-                        _encounters[type] = data;
-                        break;
-                }
 
-                if (data == DONE)
-                    SaveToDB();
-            }
+		void OnGameObjectCreate(GameObject* gameobject)
+		{
+			switch (gameobject->GetEntry())
+			{
+			case GO_FACTORY_DOOR:
+				door1 = gameobject;
+				if (_encounters[TYPE_RHAHK_ZOR] == DONE)
+					HandleGameObject(0, true, gameobject);
+				break;
+			case GO_IRON_CLAD_DOOR:
+				if (_encounters[TYPE_CANNON] == DONE)
+					HandleGameObject(0, true, gameobject);
+				break;
+			}
+		}
 
-            std::string GetSaveData()
-            {
-                std::ostringstream saveStream;
-                saveStream << "D E " << _encounters[0] << ' ' << _encounters[1];
-                return saveStream.str();
-            }
+		void SetData(uint32 type, uint32 data)
+		{
+			switch (type)
+			{
+			case TYPE_RHAHK_ZOR:
+			case TYPE_CANNON:
+				_encounters[type] = data;
+				break;
+			}
 
-            void Load(const char* in)
-            {
-                if (!in)
-                    return;
+			if (data == DONE)
+				SaveToDB();
+		}
 
-                char dataHead1, dataHead2;
-                std::istringstream loadStream(in);
-                loadStream >> dataHead1 >> dataHead2;
-                if (dataHead1 == 'D' && dataHead2 == 'E')
-                {
-                    for (uint8 i = 0; i < MAX_ENCOUNTERS; ++i)
-                    {
-                        loadStream >> _encounters[i];
-                        if (_encounters[i] == IN_PROGRESS)
-                            _encounters[i] = NOT_STARTED;
-                    }
-                }
-            }
+		std::string GetSaveData()
+		{
+			std::ostringstream saveStream;
+			saveStream << "D E " << _encounters[0] << ' ' << _encounters[1];
+			return saveStream.str();
+		}
 
-        private:
-            uint32 _encounters[MAX_ENCOUNTERS];
-        };
+		void Load(const char* in)
+		{
+			if (!in)
+				return;
 
-        InstanceScript* GetInstanceScript(InstanceMap* map) const
-        {
-            return new instance_deadmines_InstanceMapScript(map);
-        }
+			char dataHead1, dataHead2;
+			std::istringstream loadStream(in);
+			loadStream >> dataHead1 >> dataHead2;
+			if (dataHead1 == 'D' && dataHead2 == 'E')
+			{
+				for (uint8 i = 0; i < MAX_ENCOUNTERS; ++i)
+				{
+					loadStream >> _encounters[i];
+					if (_encounters[i] == IN_PROGRESS)
+						_encounters[i] = NOT_STARTED;
+				}
+			}
+		}
+
+	private:
+		uint32 _encounters[MAX_ENCOUNTERS];
+		GameObject* door1;
+	};
+
+	InstanceScript* GetInstanceScript(InstanceMap* map) const
+	{
+		return new instance_deadmines_InstanceMapScript(map);
+	}
 };
 
 void AddSC_instance_deadmines()
 {
-    new instance_deadmines();
+	new instance_deadmines();
 }
