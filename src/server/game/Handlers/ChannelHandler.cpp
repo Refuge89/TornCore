@@ -11,6 +11,17 @@
 #include <cctype>
 #include "utf8.h"
 
+bool WorldSession::ChannelCheck(std::string channel)
+{
+	if (channel.size() >= 100)
+		return false;
+
+	if (channel.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890") != std::string::npos)
+		return false;
+
+	return true;
+}
+
 void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
 {
     uint32 channelId;
@@ -41,7 +52,7 @@ void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
 
     // pussywizard: restrict allowed characters in channel name to avoid |0 and possibly other exploits
     //if (!ObjectMgr::IsValidChannelName(channelName))
-    if (channelName.find("|") != std::string::npos || channelName.size() >= 100 || !utf8::is_valid(channelName.begin(), channelName.end()))
+    if (channelName.find("|") != std::string::npos || !ChannelCheck(channelName) || !utf8::is_valid(channelName.begin(), channelName.end()))
         return;
 
     if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeamId()))
@@ -57,6 +68,9 @@ void WorldSession::HandleLeaveChannel(WorldPacket& recvPacket)
     std::string channelName;
     recvPacket >> unk >> channelName;
 
+    if (!ChannelCheck(channelName))
+		return;
+    
 #if defined(ENABLE_EXTRAS) && defined(ENABLE_EXTRA_LOGS)
     sLog->outDebug(LOG_FILTER_CHATSYS, "CMSG_LEAVE_CHANNEL %s Channel: %s, unk1: %u",
         GetPlayerInfo().c_str(), channelName.c_str(), unk);
@@ -76,6 +90,9 @@ void WorldSession::HandleChannelList(WorldPacket& recvPacket)
     std::string channelName;
     recvPacket >> channelName;
 
+    if (!ChannelCheck(channelName))
+		return;
+    
 #if defined(ENABLE_EXTRAS) && defined(ENABLE_EXTRA_LOGS)
     sLog->outDebug(LOG_FILTER_CHATSYS, "%s %s Channel: %s",
         recvPacket.GetOpcode() == CMSG_CHANNEL_DISPLAY_LIST ? "CMSG_CHANNEL_DISPLAY_LIST" : "CMSG_CHANNEL_LIST",
@@ -91,6 +108,9 @@ void WorldSession::HandleChannelPassword(WorldPacket& recvPacket)
     std::string channelName, password;
     recvPacket >> channelName >> password;
 
+    if (!ChannelCheck(channelName) || !ChannelCheck(password))
+		return;
+    
 #if defined(ENABLE_EXTRAS) && defined(ENABLE_EXTRA_LOGS)
     sLog->outDebug(LOG_FILTER_CHATSYS, "CMSG_CHANNEL_PASSWORD %s Channel: %s, Password: %s",
         GetPlayerInfo().c_str(), channelName.c_str(), password.c_str());
