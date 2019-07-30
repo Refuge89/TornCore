@@ -710,6 +710,7 @@ class WorldSession
         void HandleGetChannelMemberCount(WorldPacket& recvPacket);
         void HandleSetChannelWatch(WorldPacket& recvPacket);
         void HandleClearChannelWatch(WorldPacket& recvPacket);
+        bool ChannelCheck(std::string channel);
 
         void HandleCompleteCinematic(WorldPacket& recvPacket);
         void HandleNextCinematicCamera(WorldPacket& recvPacket);
